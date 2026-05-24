@@ -82,7 +82,7 @@
 
     <script>
         // Substitua pela URL do seu estágio do API Gateway (configurado via Route53)
-        const API_BASE_URL = 'https://sua-api.seu-dominio.com/prod'; 
+        const API_BASE_URL = 'https://m5zjkv8lsg.execute-api.us-east-1.amazonaws.com';
 
         // Elementos do DOM
         const dropzone = document.getElementById('dropzone');
@@ -133,11 +133,11 @@
                 progressContainer.classList.remove('hidden');
                 
                 // 1. Solicitar URL assinada para a Lambda via API Gateway
-                const response = await fetch(`${API_BASE_URL}/upload-url`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName: fileToUpload.name, fileType: fileToUpload.type })
-                });
+               const response = await fetch(`${API_BASE_URL}/`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ fileName: fileToUpload.name, fileType: fileToUpload.type })
+             });
                 
                 if (!response.ok) throw new Error('Falha ao gerar URL de upload.');
                 const { uploadUrl } = await response.json();
@@ -186,57 +186,46 @@
 
         // Listar arquivos salvos
         async function fetchFiles() {
-            loadingState.classList.remove('hidden');
-            fileList.classList.add('hidden');
-            emptyState.classList.add('hidden');
+            if (!fileToUpload) return; // Garante que temos um arquivo enviado para buscar
+    
+                loadingState.classList.remove('hidden');
+                fileList.classList.add('hidden');
+                emptyState.classList.add('hidden');
 
             try {
-                const response = await fetch(`${API_BASE_URL}/files`);
-                if (!response.ok) throw new Error('Erro ao listar arquivos.');
-                
-                const files = await response.json(); // Espera uma array de objetos: [{key: "foto.png", size: 1024, url: "..."}]
-
-                if (!files || files.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    return;
-                }
+        // Envia o método GET para a raiz passsando o fileName por parâmetro
+                const response = await fetch(`${API_BASE_URL}/?fileName=${encodeURIComponent(fileToUpload.name)}`);
+                if (!response.ok) throw new Error('Erro ao buscar arquivo.');
+        
+                const data = await response.json(); // Recebe {'downloadUrl': '...'} da sua Lambda
 
                 fileList.innerHTML = '';
-                files.forEach(file => {
-                    const li = document.createElement('li');
-                    li.className = 'py-3 flex items-center justify-between hover:bg-gray-50 px-2 rounded-lg transition-colors';
-                    li.innerHTML = `
-                        <div class="flex items-center gap-3 min-w-0">
-                            <i data-lucide="file" class="w-5 h-5 text-gray-400 flex-shrink-0"></i>
-                            <div class="truncate">
-                                <p class="text-sm font-medium text-gray-900 truncate">${file.key}</p>
-                                <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                        </div>
-                        <a href="${file.url}" target="_blank" class="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors flex items-center gap-1 text-sm font-medium">
-                            <i data-lucide="download" class="w-4 h-4"></i> Baixar
-                        </a>
-                    `;
-                    fileList.appendChild(li);
-                });
+                const li = document.createElement('li');
+                li.className = 'py-3 flex items-center justify-between hover:bg-gray-50 px-2 rounded-lg transition-colors';
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                    <i data-lucide="file" class="w-5 h-5 text-blue-500 flex-shrink-0"></i>
+                    <div class="truncate">
+                    <p class="text-sm font-medium text-gray-900 truncate">${fileToUpload.name}</p>
+                    <p class="text-xs text-gray-500">Pronto para leitura (GET)</p>
+                </div>
+                </div>
+                <a href="${data.downloadUrl}" target="_blank" class="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors flex items-center gap-1 text-sm font-medium">
+                <i data-lucide="download" class="w-4 h-4"></i> Abrir Arquivo (GET)
+                </a>
+        `       ;
+        fileList.appendChild(li);
 
-                lucide.createIcons();
-                fileList.classList.remove('hidden');
+        lucide.createIcons();
+        fileList.classList.remove('hidden');
 
-            } catch (error) {
-                console.error(error);
-                emptyState.classList.remove('hidden');
-            } finally {
-                loadingState.classList.add('hidden');
-            }
+        } catch (error) {
+            console.error(error);
+            emptyState.classList.remove('hidden');
+        } finally {
+            loadingState.classList.add('hidden');
         }
-
-        refreshBtn.addEventListener('click', fetchFiles);
-        
-        // Executa uma busca inicial ao carregar a página
-        if (API_BASE_URL !== 'https://sua-api.seu-dominio.com/prod') {
-            fetchFiles();
-        }
+    }
     </script>
 </body>
 </html>
